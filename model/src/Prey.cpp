@@ -172,7 +172,7 @@ void Prey::update(Predator const& predator, std::vector<Prey> &preyAnimats)
   // limit speed
   speed = glm::clamp(speed, AppSettings::minPreyVelocity, AppSettings::maxPreyVelocity);
 
-  if (PREY_ENERGY == 1) {
+#if (PREY_ENERGY == 1) 
 
 	  float oxygenConsumption = pow(62.9, (0.21 * ((speed / 1.5) / AppSettings::preySize))) / 36; //mgO2 / kg h
 	  oxygenConsumption = oxygenConsumption / 360;
@@ -185,10 +185,10 @@ void Prey::update(Predator const& predator, std::vector<Prey> &preyAnimats)
 		  energy += regenerationGain;
 		  if (energy > 1) energy = 1.0f;
 	  }
-  }
+#endif
 
   // if we're using Zheng's method
-  else if (PREY_ENERGY == 2) {
+#if (PREY_ENERGY == 2) 
 
 	  prevAngle_t = angle_t;
 	  angle_t = atan(heading.y / heading.x);
@@ -214,7 +214,7 @@ void Prey::update(Predator const& predator, std::vector<Prey> &preyAnimats)
 		  energy += regenerationGain;
 		  if (energy > 1) energy = 1.0f;
 	  }
-  }
+#endif
 
   // half regenerated
   if (isExhausted && (energy >= 0.5)) {
@@ -223,7 +223,7 @@ void Prey::update(Predator const& predator, std::vector<Prey> &preyAnimats)
 
   position += getVelocity();
 
-  if (HYDRO == 1) {
+#if (HYDRO == 1) 
 	  glm::vec2 Ui = glm::vec2(.0f, .0f);
 	  for (int i = 0; i < preyAnimats.size(); i++) {
 		  if (id != preyAnimats[i].id && !preyAnimats[i].isDead){
@@ -243,7 +243,7 @@ void Prey::update(Predator const& predator, std::vector<Prey> &preyAnimats)
 		  }
 	  }
 	  position += Ui;
-  }
+#endif
 }
 
 bool Prey::isInBlindSpot(glm::vec2 const& animatDirection)

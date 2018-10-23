@@ -19,7 +19,7 @@ namespace AppSettings {
   const int screenWidth = 1920;
   const int screenHeight = 1080;
 
-  const int noOfIterations = 10;
+  const int noOfIterations = 20;
   const int noOfSteps = 600;
   const int noOfGenerations = 500;
 	const int noOfFlocks = 5;

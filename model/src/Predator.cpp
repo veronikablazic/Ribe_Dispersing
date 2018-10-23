@@ -40,9 +40,9 @@ Predator::Predator(int animatID)
 
   distFromTarget = 1000000;
 
-  distanceForAcceleration = 150.0f;
-  velocityMultiplier = 3.0f;
-  attackPeriod = 200;
+  distanceForAcceleration = (std::rand() % (600));
+  velocityMultiplier = (std::rand() % (3));
+  attackPeriod = (std::rand() % (600));
   currentAttackTime = 0;
 }
 
@@ -114,7 +114,7 @@ void Predator::calculate(std::vector<Prey>& preyAnimats) {
 		glm::vec2 huntVector = glm::vec2(.0f, .0f);
 		currentAttackTime++;
 
-		if (EVOL_PARAMETERS == 1) {
+#if (EVOL_PARAMETERS == 1) 
 			if (currentAttackTime > attackPeriod) {
 				target = -1;
 				handling = true;
@@ -128,7 +128,7 @@ void Predator::calculate(std::vector<Prey>& preyAnimats) {
 				if (distFromTarget < distanceForAcceleration) isNearCatch = true;
 				else isNearCatch = false;
 			}
-		}
+#endif
     
     // if has target
 		if (target != -1) {
