@@ -40,9 +40,9 @@ Predator::Predator(int animatID)
 
   distFromTarget = 1000000;
 
-  distanceForAcceleration = (std::rand() % (600));
-  velocityMultiplier = (std::rand() % (3));
-  attackPeriod = (std::rand() % (600));
+  distanceForAcceleration = randomFloat(1.0f, AppSettings::huntSize);
+  velocityMultiplier = randomFloat(1.0f, 3.0f);
+  attackPeriod = randomFloat(1.0f, AppSettings::noOfSteps);
   currentAttackTime = 0;
 }
 

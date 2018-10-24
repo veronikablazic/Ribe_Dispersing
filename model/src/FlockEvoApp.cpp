@@ -222,13 +222,11 @@ void FlockEvoApp::createNewGeneration()
 
 	// mutation
 
-	float mutationAP = (std::rand() % (10));
-
 	random = randomFloat(.0f, 1.0f);
 	if (random < AppSettings::mutationRate){
 		float flip = randomFloat(.0f, 1.0f);
-		if (flip > 0.5f) aP += mutationAP;
-		else aP -= mutationAP;
+		if (flip > 0.5f) aP = aP + (aP * AppSettings::mutationFactor);
+		else aP = aP - (aP * AppSettings::mutationFactor);
 	}
 	if (aP < 0) aP = 0;
 
@@ -240,13 +238,11 @@ void FlockEvoApp::createNewGeneration()
 	}
 	if (vM < 1.0f) vM = 1.0f;
 
-	float mutationDA = (std::rand() % (10));
-
 	random = randomFloat(.0f, 1.0f);
 	if (random < AppSettings::mutationRate){
 		float flip = randomFloat(.0f, 1.0f);
-		if (flip > 0.5f) dA += mutationDA;
-		else dA -= mutationDA;
+		if (flip > 0.5f) dA = dA + (dA * AppSettings::mutationFactor);
+		else dA = dA - (dA * AppSettings::mutationFactor);;
 	}
 	if (dA < 0) dA = 0;
 
