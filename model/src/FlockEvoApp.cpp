@@ -204,7 +204,7 @@ void FlockEvoApp::createNewGeneration()
       }
     }
 
-	int aP;
+	float aP;
 	float vM;
 	float dA;
 
@@ -229,6 +229,7 @@ void FlockEvoApp::createNewGeneration()
 		else aP = aP - (aP * AppSettings::mutationFactor);
 	}
 	if (aP < 0) aP = 0;
+	else if (aP > AppSettings::noOfSteps) aP = AppSettings::noOfSteps;
 
 	random = randomFloat(.0f, 1.0f);
 	if (random < AppSettings::mutationRate){
@@ -237,6 +238,7 @@ void FlockEvoApp::createNewGeneration()
 		else vM -= AppSettings::mutationFactor;
 	}
 	if (vM < 1.0f) vM = 1.0f;
+	else if (vM > 3.0f) vM = 3.0f;
 
 	random = randomFloat(.0f, 1.0f);
 	if (random < AppSettings::mutationRate){
@@ -245,6 +247,8 @@ void FlockEvoApp::createNewGeneration()
 		else dA = dA - (dA * AppSettings::mutationFactor);;
 	}
 	if (dA < 0) dA = 0;
+	else if (dA > AppSettings::huntSize) dA = AppSettings::huntSize;
+
 
     // crossover - lock-on distance from first parent, lock-on radius from second
     float parentLockOnDistance = firstParent.lockOnDistance;

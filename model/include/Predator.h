@@ -59,8 +59,8 @@ class Predator
 	//speed evolution parameters
 	float distanceForAcceleration;		// distance from prey to which predator is using its minimum speed
 	float velocityMultiplier;			// full speed means more energy expense, why use full speed if not necessary, used instead of force multiplier
-	double attackPeriod;				// max attack period in seconds
-	double currentAttackTime;
+	float attackPeriod;				    // max attack period in seconds
+	float currentAttackTime;
 	bool isNearCatch = false;
 	float attackZoneAngle;
 

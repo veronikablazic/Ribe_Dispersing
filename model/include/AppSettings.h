@@ -7,13 +7,13 @@ namespace AppSettings {
 #define ENERGY 0
 #define PREY_ENERGY 0
 // 0 - predator non confusable, 1 - predator confusable, 2 - predator zheng
-#define CONFUSABILITY 2
+#define CONFUSABILITY 0
 	// 0 - no selfish prey escape, 1 - selfish prey escape
 #define SELFISH_ESCAPE 0
 	// 0 - no hydrodinamics, 1 - hydrodinamics
 #define HYDRO 0
 	// 0 - no evolution parameters in account, 1 - evolution parameters present
-#define EVOL_PARAMETERS 0
+#define EVOL_PARAMETERS 1
 
   //model
   const int screenWidth = 1920;
