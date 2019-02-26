@@ -7,13 +7,16 @@ namespace AppSettings {
 #define ENERGY 0
 #define PREY_ENERGY 0
 // 0 - predator non confusable, 1 - predator confusable, 2 - predator zheng
-#define CONFUSABILITY 0
+#define CONFUSABILITY 2
 	// 0 - no selfish prey escape, 1 - selfish prey escape
 #define SELFISH_ESCAPE 0
 	// 0 - no hydrodinamics, 1 - hydrodinamics
 #define HYDRO 0
 	// 0 - no evolution parameters in account, 1 - evolution parameters present
-#define EVOL_PARAMETERS 1
+#define PREY_EVOLUTION 0 // 2
+
+#define PREY_ENERGY_PARAMS 0 // 2 in 3
+#define PRED_ENERGY_PARAMS 0 // 3
 
   //model
   const int screenWidth = 1920;
@@ -35,8 +38,9 @@ namespace AppSettings {
   const float preySize = 1.0f;
 
   const float maxPreyForce = 2.0f;
-  const float maxPreyVelocity = 8.0f;
-  const float minPreyVelocity = 4.0f;
+  const float maxPreyVelocity = preySize * 4.0f;
+  const float cruisingPrey = preySize * 1.4f;
+  const float minPreyVelocity = preySize * 1.0f;
 
   const float escapeSize = 200.0f;
   const float separationSize = 10.0f;
@@ -61,8 +65,9 @@ namespace AppSettings {
   const int huntFactor = 1;
 
   const float maxPredatorForce = 2.5f;
-  const float maxPredatorVelocity = 12.0f;
-  const float minPredatorVelocity = 3.0f;
+  const float maxPredatorVelocity = preySize * 5.6f;
+  const float cruisingSpeed = predatorSize * 1.4f; // brainbridge
+  const float minPredatorVelocity = predatorSize * 1.0f;
 
   const float huntSize = 800.0f;
   const float confusabilitySize = 50.0f;

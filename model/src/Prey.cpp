@@ -3,6 +3,7 @@
 #include "AppSettings.h"
 #include "Predator.h"
 #include "Prey.h"
+#include <algorithm>
 
 Prey::Prey(int animatID)
 {
@@ -31,10 +32,119 @@ Prey::Prey(int animatID)
   energy = 1;
   angle_t = 0;
   selfishEscape = false;
+
+  selfish = true;
+  selfishTimeCount = selfishTime;
+
+  // random
+  wb = randomFloat(0.0f, 1.0f);
+  wr = randomFloat(0.0f, 1.0f);
+  we = randomFloat(0.0f, 1.0f);
+  cn0 = randomFloat(AppSettings::minPreyVelocity, AppSettings::maxPreyVelocity);
+  cn2 = randomFloat(AppSettings::minPreyVelocity, AppSettings::maxPreyVelocity);
+  cn1 = randomFloat(0.0f, 50.0f);
+  cn3 = randomFloat(0.0f, 50.0f);
+  cr0 = randomFloat(0.0f, energy);
+  cr1 = randomFloat(0.0f, 50.0f);
+  selfishTime = randomInt(1, 600);
+  selfishTime2 = randomInt(0, 600);
+  selfishEscapeDistance = randomFloat(0.0f, AppSettings::huntSize);
+  selfishProbability = randomFloat(0.0f, 1.0f);
+  dot_pow = randomFloat(0.0f, 10.0f);
+  dotTreshold = randomFloat(0.0f, 1.0f);
+  v_b = randomFloat(AppSettings::cruisingPrey, AppSettings::maxPreyVelocity);
+  v_r = randomFloat(AppSettings::minPreyVelocity, AppSettings::cruisingPrey);
+
+}
+
+Prey::Prey(int animatID, float wb1, float wr1, float we1, float cn01, float cn11, float cn21, float cn31, float cr01, float cr11, int st, int st2, float se, float sp, float dp, float dt, float vb, float vr)
+{
+	// position
+	float x = randomFloat(AppSettings::screenWidth / 2 - AppSettings::worldSize, AppSettings::screenWidth / 2 + AppSettings::worldSize);
+	float y = randomFloat(AppSettings::screenHeight / 2 - AppSettings::worldSize, AppSettings::screenHeight / 2 + AppSettings::worldSize);
+	position = glm::vec2(x, y);
+
+	// speed and heading
+	x = randomFloat(-.1f * AppSettings::minPreyVelocity, .1f * AppSettings::minPreyVelocity);
+	heading = glm::normalize(glm::vec2(x, -1.0f));
+	speed = randomFloat(AppSettings::minPreyVelocity, AppSettings::maxPreyVelocity);
+
+	id = animatID;
+	isDead = false;
+	//isTarget = false;
+
+	acceleration = glm::vec2(.0f, .0f);
+	peripheralityDir = glm::vec2(.0f, .0f);
+	peripherality = std::numeric_limits<float>::max();
+
+	energy = 1.0f;
+	angle_t = 0;
+	selfishEscape = false;
+	escapeDistance = 50;
+
+	selfish = true;
+	selfishTimeCount = selfishTime;
+
+	wb = wb1;
+	wr = wr1;
+	we = we1;
+	cn0 = cn01;
+	cn2 = cn21;
+	cn1 = cn11;
+	cn3 = cn31;
+	cr0 = cr01;
+	cr1 = cr11;
+	selfishTime = st;
+	selfishTime2 = st2;
+	selfishEscapeDistance = se;
+	selfishProbability = sp;
+	dot_pow = dp;
+	dotTreshold = dt;
+	v_b = vb;
+	v_r = vr;
+}
+
+void Prey::reset() {
+	// acceleration
+	acceleration = glm::vec2(.0f, .0f);
+
+	// position
+	float x = randomFloat(AppSettings::screenWidth / 2 - AppSettings::worldSize, AppSettings::screenWidth / 2 + AppSettings::worldSize);
+	float y = randomFloat(AppSettings::screenHeight / 2 - AppSettings::worldSize, AppSettings::screenHeight / 2 + AppSettings::worldSize);
+	position = glm::vec2(x, y);
+
+	// speed and heading
+	x = randomFloat(-.1f * AppSettings::minPreyVelocity, .1f * AppSettings::minPreyVelocity);
+	heading = glm::normalize(glm::vec2(x, -1.0f));
+	speed = randomFloat(AppSettings::minPreyVelocity, AppSettings::maxPreyVelocity);
+
+	//isDead = false;
+	//isTarget = false;
+	//energy = 1.0f;
+
 }
 
 void Prey::calculate(Predator const& predator)
 {
+
+#if (SELFISH_ESCAPE == 1)
+	// ko se riba odloèi za sebièni pobeg se potem nekaj èasa ne more
+	if (selfishTimeout > 0) {
+		selfishTimeout--;
+		if (selfishTimeout == 0) selfish = true;
+	}
+
+	// sebièni pobeg traja selfishTime iteracij
+	if (selfishTimeCount < selfishTime) {
+		selfishTimeCount++;
+		if (selfishTimeCount == selfishTime) {
+			selfishEscape = false;
+			selfishDirection = 0;
+		}
+	}
+#endif
+
+
   // reset accelertion to 0 each cycle
   acceleration = glm::vec2(.0f, .0f);
 
@@ -121,6 +231,19 @@ void Prey::calculate(Predator const& predator)
   if (cohesionCount > 0)
     acceleration += ((cohesionVector / (float)cohesionCount)) * AppSettings::cohesionWeight;
 
+#if(PREY_ENERGY_PARAMS == 1) 
+  //  burst -> cruise
+  if (speed > cn0)
+	  acceleration += wb * pow(std::min(std::max((speed - cn0) / (AppSettings::maxPreyVelocity - cn0), 0.0f), 1.0f), cn1) * glm::normalize(-getVelocity());
+  // rest -> crusie
+  if (speed < cn2){
+	  acceleration += wr * pow(std::min(std::max((cn2 - speed) / (cn2 - AppSettings::minPreyVelocity), 0.0f), 1.0f), cn3) * glm::normalize(getVelocity());
+  }
+  if (energy < cr0)
+	  acceleration += we * std::min(std::max((cr0 - energy / cr0), 0.0f), cr1) * glm::normalize(-getVelocity());
+
+#endif
+
   // clamp
   acceleration = limit(acceleration, AppSettings::maxPreyForce);
 
@@ -132,10 +255,29 @@ void Prey::update(Predator const& predator, std::vector<Prey> &preyAnimats)
   // update speed and heading
   glm::vec2 velocity = getVelocity();
   
-  if (SELFISH_ESCAPE == 1 && predator.target == id) {
-	  float dist = sqrt(pow(position.x - predator.position.x, 2) + pow(position.y - predator.position.y, 2));
-	  if (dist < escapeDistance) selfishEscape = true;
-	  else selfishEscape = false;
+if (SELFISH_ESCAPE == 1) {
+
+	  float dist = glm::distance(position, predator.position);
+	  float random = randomFloat(.0f, 1.0f);
+
+	  float dot = glm::dot(glm::normalize(predator.heading), glm::normalize(position - predator.position));
+	  random = randomFloat(0.0f, 1.0f);
+
+	  if (dist < selfishEscapeDistance && pow(dot, dot_pow) > dotTreshold) {
+		  // vsaka riba samo 1x selfish pobeg
+		  if (selfish) {
+
+			  selfish = false;
+			  selfishTimeout = 100;
+			  selfishTimeCount = 0;
+
+			  if (!isExhausted && random < selfishProbability) selfishEscape = true;
+		  }
+	  }
+	  else if (selfishTimeCount == 100) {
+		  selfishEscape = false;
+		  selfishDirection = 0;
+	  }
   }
   else selfishEscape = false;
 
@@ -145,7 +287,9 @@ void Prey::update(Predator const& predator, std::vector<Prey> &preyAnimats)
 	  }
 	  else {
 		  isExhausted = true;
-		  speed = AppSettings::minPreyVelocity;
+		  selfishEscape = false;
+		  if (PREY_ENERGY_PARAMS) speed = v_r;
+		  else speed = AppSettings::minPreyVelocity;
 		  velocity = getVelocity();
 	  }
   }
@@ -161,16 +305,56 @@ void Prey::update(Predator const& predator, std::vector<Prey> &preyAnimats)
 		  heading = velocity / speed;
 	  }
 	  // limit speed
-	  speed = glm::clamp(speed, AppSettings::minPreyVelocity, AppSettings::maxPreyVelocity);
+	  if (PREY_ENERGY_PARAMS == 1) {
+		  if (!isExhausted) speed = glm::clamp(speed, v_r, v_b);
+		  else speed = glm::clamp(speed, AppSettings::minPreyVelocity, v_r);
+	  }
+	  else speed = glm::clamp(speed, AppSettings::minPreyVelocity, AppSettings::maxPreyVelocity);
   }
   else {
 	  // selfish escape
-	  speed = AppSettings::maxPreyVelocity;
-	  heading = glm::vec2(predator.heading.y, -predator.heading.x);
+	  if (energy > 0) {
+		  if (PREY_ENERGY_PARAMS == 1) speed = v_b;
+		  else speed = AppSettings::maxPreyVelocity;
+	  }
+
+	  if (selfishDirection == 0) {
+
+		  // if to the left of heading turn left, else right. if cross = 0, then random.
+		  glm::vec3 ba = glm::vec3(predator.heading.x, predator.heading.y, 0);
+		  glm::vec3 ca = glm::vec3(position.x - predator.position.x, position.y - predator.position.y, 0);
+		  glm::vec3 cross = glm::cross(ba, ca);
+
+		  if (cross.z > 0) {
+			  heading = glm::vec2(-predator.heading.y, predator.heading.x);
+			  selfishDirection = 2;
+		  }
+		  else if (cross.z < 0) {
+			  heading = glm::vec2(predator.heading.y, -predator.heading.x);
+			  selfishDirection = 1;
+		  }
+		  else {
+			  float random = randomFloat(0, 1.0f);
+			  if (random > 0.5f){
+				  heading = glm::vec2(predator.heading.y, -predator.heading.x);
+				  selfishDirection = 1;
+			  }
+			  else {
+				  heading = glm::vec2(-predator.heading.y, predator.heading.x);
+				  selfishDirection = 2;
+			  }
+		  }
+	  }
+	  else if (selfishDirection == 1) heading = glm::vec2(predator.heading.y, -predator.heading.x);
+	  else heading = glm::vec2(-predator.heading.y, predator.heading.x);
   }
 
   // limit speed
-  speed = glm::clamp(speed, AppSettings::minPreyVelocity, AppSettings::maxPreyVelocity);
+  if (PREY_ENERGY_PARAMS) {
+	  if (!isExhausted) speed = glm::clamp(speed, v_r, v_b);
+	  else speed = glm::clamp(speed, AppSettings::minPreyVelocity, v_r);
+  }
+  else speed = glm::clamp(speed, AppSettings::minPreyVelocity, AppSettings::maxPreyVelocity);
 
 #if (PREY_ENERGY == 1) 
 
@@ -207,11 +391,12 @@ void Prey::update(Predator const& predator, std::vector<Prey> &preyAnimats)
 		  - 0.002f * 1 * ncoll * std::exp(ncoll / 2);
 	  if (std::abs(energyChange) > 0.9) energyChange = 0.0f;
 
-	  if (speed - glm::length2(Ui) > AppSettings::minPreyVelocity) {
+	  if (speed > AppSettings::cruisingPrey) {
 		  energy += energyChange;
 	  }
 	  else {
-		  energy += regenerationGain;
+		  float speedPercentage = 1 - ((speed - AppSettings::minPreyVelocity) / (AppSettings::cruisingPrey - AppSettings::minPreyVelocity));
+		  energy += regenerationGain * speedPercentage;
 		  if (energy > 1) energy = 1.0f;
 	  }
 #endif

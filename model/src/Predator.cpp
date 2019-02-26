@@ -25,13 +25,9 @@ Predator::Predator(int animatID)
   lockOn = false;
   handling = false;
   handlingTimer = 0;
-
-  // random lock-on distances
-  lockOnDistance = randomFloat(1.0f, AppSettings::huntSize);
-  lockOnRadius = randomFloat(1.0f, AppSettings::huntSize);
+  wanderingTime = AppSettings::handlingTime;
 
   // new 
-
   energy = 1;
   regenerationGain = 30.0f / 100000.0f; //regeneration in 30'
 
@@ -40,13 +36,55 @@ Predator::Predator(int animatID)
 
   distFromTarget = 1000000;
 
-  distanceForAcceleration = randomFloat(1.0f, AppSettings::huntSize);
-  velocityMultiplier = randomFloat(1.0f, 3.0f);
-  attackPeriod = randomFloat(1.0f, AppSettings::noOfSteps);
+  distanceForAcceleration = 765;
+  attackPeriod = 248;
+
+  wandering = false;
+
   currentAttackTime = 0;
+  step = 0;
+
+  if (PREY_EVOLUTION == 0) {
+
+	  // random lock-on distances
+	  lockOnDistance = randomFloat(1.0f, AppSettings::huntSize);
+	  lockOnRadius = randomFloat(1.0f, AppSettings::huntSize);
+
+	  // za part 3, ko ima plenilec energijo
+	  if (PRED_ENERGY_PARAMS == 1) {
+		  wb = randomFloat(0.0f, 1.0f);
+		  wr = randomFloat(0.0f, 1.0f);
+		  we = randomFloat(0.0f, 1.0f);
+		  cn0 = randomFloat(AppSettings::minPredatorVelocity, AppSettings::maxPredatorVelocity);
+		  cn2 = randomFloat(AppSettings::minPredatorVelocity, AppSettings::maxPredatorVelocity);
+		  cn1 = randomFloat(0.0f, 50.0f);
+		  cn3 = randomFloat(0.0f, 50.0f);
+		  cr0 = randomFloat(0.0f, energy);
+		  cr1 = randomFloat(0.0f, 50.0f);
+
+		  attackPeriod = randomInt(1, AppSettings::noOfSteps);
+		  wanderingTime = randomInt(0, AppSettings::noOfSteps);
+		  //velocityMultiplier = randomFloat(1.0f, 3.0f);
+		  distanceForAcceleration = randomFloat(1.0f, AppSettings::huntSize);
+		  //nextDecision = restPeriod;
+
+		  v_b = randomFloat(AppSettings::cruisingSpeed, AppSettings::maxPredatorVelocity);
+		  v_r = randomFloat(AppSettings::minPredatorVelocity, AppSettings::cruisingSpeed);
+	  }
+  }
+  // v part 2 ima vse parametre fiksno dolocene, te 3 k jih ma
+  else {
+
+	  // for conf = 0 and conf = 2
+
+	  lockOnDistance = randomFloat(1.0f, AppSettings::huntSize);
+	  lockOnRadius = randomFloat(1.0f, AppSettings::huntSize);
+
+	  // end for conf = 0
+  }
 }
 
-Predator::Predator(int animatID, float parentLockOnDistance, float parentlockOnRadius, float dA, float vM, int aP)
+Predator::Predator(int animatID, float parentLockOnDistance, float parentlockOnRadius, float dA, int aP, int rP, float wb1, float wr1, float we1, float cn01, float cn11, float cn21, float cn31, float cr01, float cr11, float vb, float vr)
 {
   // acceleration
   acceleration = glm::vec2(.0f, .0f);
@@ -79,9 +117,23 @@ Predator::Predator(int animatID, float parentLockOnDistance, float parentlockOnR
   distFromTarget = 1000000;
 
   distanceForAcceleration = dA;
-  velocityMultiplier = vM;
   attackPeriod = aP;
   currentAttackTime = 0;
+
+  wb = wb1;
+  wr = wr1;
+  we = we1;
+  cn0 = cn01;
+  cn2 = cn21;
+  cn1 = cn11;
+  cn3 = cn31;
+  cr0 = cr01;
+  cr1 = cr11;
+
+  wanderingTime = rP;
+
+  v_b = vb;
+  v_r = vr;
 }
 
 void Predator::reset()
@@ -101,6 +153,9 @@ void Predator::reset()
 	lockOn = false;
 	handling = false;
 	handlingTimer = 0;
+	wanderingTimer = 0;
+
+	energy = 1.0f;
 }
 
 void Predator::calculate(std::vector<Prey>& preyAnimats) {
@@ -109,28 +164,28 @@ void Predator::calculate(std::vector<Prey>& preyAnimats) {
 	acceleration = glm::vec2(.0f, .0f);
   
 	// only update stuff if not handling
-	if (!handling) {
+	if (!(handling || wandering)) {
 		// neighbour data
 		glm::vec2 huntVector = glm::vec2(.0f, .0f);
 		currentAttackTime++;
 
-#if (EVOL_PARAMETERS == 1) 
-			if (currentAttackTime > attackPeriod) {
-				target = -1;
-				handling = true;
-				currentAttackTime = 0;
-			}
+		#if (PRED_ENERGY_PARAMS == 1) 
+					if (currentAttackTime > attackPeriod) {
+						target = -1;
+						wandering = true;
+						currentAttackTime = 0;
+					}
 
-			if ((target != -1) && (!preyAnimats[target].isDead)) {
-				Prey& targetPrey = preyAnimats[target];
-				float distFromTarget = glm::distance(targetPrey.position, position) - AppSettings::preySize - AppSettings::predatorSize;
+					if ((target != -1) && (!preyAnimats[target].isDead)) {
+						Prey& targetPrey = preyAnimats[target];
+						float distFromTarget = glm::distance(targetPrey.position, position) - AppSettings::preySize - AppSettings::predatorSize;
 
-				if (distFromTarget < distanceForAcceleration) isNearCatch = true;
-				else isNearCatch = false;
-			}
-#endif
+						if (distFromTarget < distanceForAcceleration) isNearCatch = true;
+						else isNearCatch = false;
+					}
+		#endif
     
-    // if has target
+		// if has target
 		if (target != -1) {
 			// check if caught anything or target out of sight
 			Prey& prey = preyAnimats[target];
@@ -140,85 +195,80 @@ void Predator::calculate(std::vector<Prey>& preyAnimats) {
 			// catch attempt
 			if (distFromPrey < AppSettings::catchDistance && !prey.isDead) {
 				
-				if (CONFUSABILITY == 1) {
-					// confusability
-					float random = randomFloat(.0f, 1.0f);
-					int noOfConfusors = 0;
-					for (Prey p2 : preyAnimats) {
-						float dist = glm::distance(p2.position, position) - AppSettings::preySize - AppSettings::predatorSize;
-						if (dist < .0f) dist = .0f;
-						if (dist < AppSettings::confusabilitySize) noOfConfusors++;
-					}
+				#if (CONFUSABILITY == 1) 
+						// confusability
+						float random = randomFloat(.0f, 1.0f);
+						int noOfConfusors = 0;
+						for (Prey p2 : preyAnimats) {
+							float dist = glm::distance(p2.position, position) - AppSettings::preySize - AppSettings::predatorSize;
+							if (dist < .0f) dist = .0f;
+							if (dist < AppSettings::confusabilitySize) noOfConfusors++;
+						}
 
-					float confusability = 0;
-					if (noOfConfusors > 0) confusability = 1 / (float)noOfConfusors;
+						float confusability = 0;
+						if (noOfConfusors > 0) confusability = 1 / (float)noOfConfusors;
 
-					// not confused
-					if (random < confusability) {
+						// not confused
+						if (random < confusability) {
+							prey.isDead = true;
+							huntCount += 1;
+							currentAttackTime = 0;
+							handling = true;
+						}
+						else {
+							wandering = true;
+						}
+				#endif
+				#if (CONFUSABILITY != 1) 
 						prey.isDead = true;
 						huntCount += 1;
 						currentAttackTime = 0;
-					}
-				}
-				else {
-					prey.isDead = true;
-					huntCount += 1;
-					currentAttackTime = 0;
-				}
+						handling = true;
+				#endif
 
 				target = -1;
-				handling = true;
+				isNearCatch = false;
 			}
-			else if (CONFUSABILITY == 2) {
+
+			#if (CONFUSABILITY == 2)
 				huntVector = glm::normalize(prey.position - position);
 				std::vector<int> targetsInAttackZone;
-				std::vector<float> targetsInAttackZoneDistance;
 
 				int index = 0;
-				float min_distance = 100000.0f;
+				glm::vec2 p_huntVector;
+				float p_cos_alpha;
+				float p_dist;
+
 				for (Prey pr : preyAnimats) {
 					if (!pr.isDead) {
-						glm::vec2 p_huntVector = glm::normalize(pr.position - position);
-						// angle between current target direction and animat p
-						float p_alpha = std::acos((p_huntVector.x * huntVector.x + p_huntVector.y * huntVector.y));
-						if (p_alpha < 0) p_alpha += 2 * std::_Pi;
-						if (p_alpha < attackZoneAngle / 2) {
-							float p_dist = glm::distance(pr.position, position) - AppSettings::preySize - AppSettings::predatorSize;
-							if (p_dist < min_distance) min_distance = p_dist;
-							targetsInAttackZone.push_back(index);
-							targetsInAttackZoneDistance.push_back(p_dist);
+						p_huntVector = glm::normalize(pr.position - position);
+						p_cos_alpha = glm::dot(p_huntVector, huntVector);
+
+						if (p_cos_alpha > cos(attackZoneAngle / 2.0f)) {
+							p_dist = glm::distance(prey.position, pr.position) - AppSettings::preySize * 2;
+							if (p_dist < AppSettings::confusabilitySize / 2) {
+								targetsInAttackZone.push_back(index);
+							}
 						}
 					}
 					index++;
 				}
 
 				int n = targetsInAttackZone.size();
-				std::vector<int> targetsInAttackZone2;
 				if (n > 0) {
-					for (int i = 0; i < n; i++){
-						// izberemo samo animate, ki so znotraj tega polja
-						if ((min_distance + 50.0f) > targetsInAttackZoneDistance[i]) {
-							targetsInAttackZone2.push_back(targetsInAttackZone[i]);
-						}
-					}
-				}
-				else {
-					target = -1;					currentAttackTime = 0;
-				}
-
-				n = targetsInAttackZone2.size();
-				if (n > 0) target = targetsInAttackZone2[std::rand() % (n)];
-				
-			}
+					target = targetsInAttackZone[std::rand() % (n)];
+				}			
+		#endif
 			// target out of range
-			else if (distFromPrey > AppSettings::huntSize){
-				target = -1;
-				currentAttackTime = 0;
-			}			
+		if (distFromPrey > AppSettings::huntSize){
+			target = -1;
+			currentAttackTime = 0;
+			if (PRED_ENERGY_PARAMS == 1) wandering = true;
+		}			
     }
     // else find target
-    else
-    {
+    else 
+	{
       // find centre of nearest flock
       if (central == -1)
       {
@@ -309,60 +359,115 @@ void Predator::calculate(std::vector<Prey>& preyAnimats) {
     }
 
     // normalize and multiply with weight
-    if (target != -1)
-    {
+    if (target != -1) {
       Prey pr = preyAnimats[target];
       huntVector = glm::normalize(pr.position - position);
-      acceleration = huntVector * AppSettings::maxPredatorForce;
+	  if (!isExhausted) {
+
+		  // for part 1 we want to ignore energy consumption, therefore maxForce
+		  if (PRED_ENERGY_PARAMS == 0) {
+			  acceleration = huntVector * AppSettings::maxPredatorForce;
+		  }
+		  // else we take the base huntVector and add the new drives
+		  else {
+			  acceleration = huntVector;
+			  //  burst -> cruise
+			  if (speed > cn0)
+				  acceleration += pow(std::min(std::max((speed - cn0) / (AppSettings::maxPredatorVelocity - cn0), 0.0f), 1.0f), cn1) * glm::normalize(-getVelocity());
+			  // rest -> crusie
+			  if (speed < cn2){
+				  float wn = pow(std::min(std::max((cn2 - speed) / (cn2 - AppSettings::minPredatorVelocity), 0.0f), 1.0f), cn3);
+				  acceleration += wn * glm::normalize(getVelocity());
+			  }
+			  if (energy < cr0){
+				  acceleration += we * std::min(std::max((cr0 - energy / cr0), 0.0f), cr1) * glm::normalize(-getVelocity());
+			  }
+		  }
+	  }
     }
   }
 
   // handling
-  if (handling)
+  if (handling || wandering)
   {
-    handlingTimer++;
-    if (handlingTimer > AppSettings::handlingTime)
-    {
-      handling = false;
-      lockOn = false;
-      central = -1;
-      handlingTimer = 0;
-    }
+
+	  isNearCatch = false;
+
+	  handlingTimer++;
+	  if (handlingTimer > AppSettings::handlingTime) {
+		  handling = false;
+		  handlingTimer = 0;
+		  target = -1;
+		  currentAttackTime = 0;
+	  }
+
+	  wanderingTimer++;
+	  if (wanderingTimer > wanderingTime) {
+		  wandering = false;
+		  wanderingTimer = 0;
+		  target = -1;
+		  currentAttackTime = 0;
+	  }
+
+	  nextDecision--;
+	  if (nextDecision == 0) {
+
+		  glm::vec2 direction = glm::vec2(randomFloat(-100.0f, 100.0f), randomFloat(-100.0f, 100.0f));
+		  glm::vec2 unit_temp = glm::normalize(direction);
+		  nextDecision = randomInt(10, 30);
+
+		  float p_cos_alpha = glm::dot(heading, unit_temp);
+
+		  // je znotraj pahljace
+		  if (p_cos_alpha > cos(std::_Pi / 2)) {
+			  unit = unit_temp;
+		  }
+		  else unit = -unit_temp;
+	  }
+
+	  if (PRED_ENERGY_PARAMS == 0) acceleration = unit * AppSettings::maxPredatorForce * 0.2f;
+	  else {
+			acceleration = unit;
+			//  burst -> cruise
+			if (speed > cn0) acceleration += pow(std::min(std::max((speed - cn0) / (AppSettings::maxPredatorVelocity - cn0), 0.0f), 1.0f), cn1) * glm::normalize(-getVelocity());
+			// rest -> crusie
+			if (speed < cn2){
+				float wn = pow(std::min(std::max((cn2 - speed) / (cn2 - AppSettings::minPredatorVelocity), 0.0f), 1.0f), cn3);
+				acceleration += wn * glm::normalize(getVelocity());
+			}
+			if (energy < cr0) acceleration += we * std::min(std::max((cr0 - energy / cr0), 0.0f), cr1) * glm::normalize(-getVelocity());
+	  }
   }
 }
 
-void Predator::update()
+void Predator::update(std::vector<Prey>& preyAnimats)
 {
   // update speed and heading
   glm::vec2 velocity = getVelocity();
 
   if (ENERGY > 0) {
+	  if (isNearCatch && (PRED_ENERGY_PARAMS == 1)) speed = v_b;
+	  else if (wandering) speed = v_r;
+	  else speed = AppSettings::cruisingSpeed;
+  }
+
+  if (PRED_ENERGY_PARAMS == 1){
 	  // added acceleration if fish still has energy
-	  if (!((energy > 0) && (!isExhausted))) {
+	  if (energy <= 0) {
 		  isExhausted = true;
 		  speed = AppSettings::minPredatorVelocity; // minimum speed
-		  velocity = getVelocity();
 	  }
-
-	  // if not near catch swimming x times faster than slowest speed
-	  else if (!isNearCatch && EVOL_PARAMETERS == 1) {
-		  speed = AppSettings::minPredatorVelocity * velocityMultiplier;
-		  velocity = getVelocity();
-	  }
-
 	  else {
-		  velocity += acceleration;
+		  step++;
 	  }
   }
-  else {
-	  velocity += acceleration;
-  }
 
+  velocity = getVelocity();
+  if (!isExhausted) velocity += acceleration;
 
   speed = 0.0f;
   float speed2 = glm::length2(velocity);
-  if (speed2 > 0.0f)
-  {
+  if (speed2 > 0.0f) {
     speed = std::sqrt(speed2);
     heading = velocity / speed;
   }
@@ -403,6 +508,7 @@ void Predator::update()
 	  isExhausted = false;
   }
 
+  if (energy > 1.0f) energy = 1.0f;
   position += getVelocity();
 }
 

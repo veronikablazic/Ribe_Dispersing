@@ -8,9 +8,9 @@ class Predator
   public:
     Predator();
     Predator(int animatID);
-	Predator(int animatID, float parentLockOnDistance, float parentlockOnRadius, float dA, float vM, int aP);
+	Predator(int animatID, float parentLockOnDistance, float parentlockOnRadius, float dA, int aP, int rP, float wb1, float wr1, float we1, float cn01, float cn11, float cn21, float cn31, float cr01, float cr11, float vb, float vr);
     void calculate(std::vector<Prey>& preyAnimats);
-    void update();
+	void update(std::vector<Prey>& preyAnimats);
 		void reset();
     bool isOnFrontSideOfSchool(Prey const& prey);
     glm::vec2 getVelocity() const { return speed * heading; }
@@ -31,6 +31,12 @@ class Predator
     int huntCount;
     bool handling;
     int handlingTimer;
+
+	bool wandering;
+	int wanderingTimer;
+	int wanderingTime = 20;
+	int nextDecision = 5;
+	glm::vec2 unit = glm::vec2(0.0f, 0.0f);
 
 	// new
 
@@ -58,7 +64,7 @@ class Predator
 
 	//speed evolution parameters
 	float distanceForAcceleration;		// distance from prey to which predator is using its minimum speed
-	float velocityMultiplier;			// full speed means more energy expense, why use full speed if not necessary, used instead of force multiplier
+	// float velocityMultiplier;			// full speed means more energy expense, why use full speed if not necessary, used instead of force multiplier
 	float attackPeriod;				    // max attack period in seconds
 	float currentAttackTime;
 	bool isNearCatch = false;
@@ -72,4 +78,13 @@ class Predator
 
 	float minPreyRisk = std::numeric_limits<float>::max();
 	float maxPreyRisk = std::numeric_limits<float>::lowest();
+
+	// NEW EVOLUTION PARAMETERS
+	float wb, cn0, cn1, cn2, cn3;
+	float wr, cr0, cr1;
+	float we;
+
+	float v_b, v_r;
+
+	int step;
 };
